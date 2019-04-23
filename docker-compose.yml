@@ -1,0 +1,58 @@
+version: "3" 
+
+services:
+  github:
+    image: 'gitlab/gitlab-ce'
+    container_name: 'gitlab'
+    restart: always
+    hostname: gitlab.example.com
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.example.com:9090'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2224
+    networks:
+      - gitlab-network
+    ports:
+      - '80:80'
+      - '443:443'
+      - '9090:9090'
+      - '2224:22'
+    volumes:
+      - '/srv/gitlab/config:/etc/gitlab'
+      - '/srv/gitlab/logs:/var/log/gitlab'
+      - '/srv/gitlab/data:/var/opt/gitlab'
+    environment:
+      - DEBUG=true
+      - DB_ADAPTER=postgresql
+      - DB_HOST=postgresql
+      - DB_PORT=5432
+      - DB_USER=gitlab
+      - DB_PASS=password
+      - DB_NAME=gitlabci
+
+  github-runner:
+    image: 'gitlab/gitlab-runner'
+    container_name: 'gitlab-runner'
+    restart: always
+    networks:
+      - gitlab-network
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - '/srv/gitlab/runner/config:/etc/gitlab-runner'
+      - '/srv/gitlab/data:/var/opt/gitlab'
+
+  postgresql:
+    image: postgres:10
+    restart: always
+    networks:
+      - gitlab-network
+    volumes:
+      - /srv/gitlab/postgresql:/var/lib/postgresql:Z
+    environment:
+      - DB_USER=gitlab
+      - DB_PASS=password
+      - DB_NAME=gitlabci
+      - DB_EXTENSION=pg_trgm
+
+networks:
+  gitlab-network:
