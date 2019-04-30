@@ -1,51 +1,73 @@
-version: "3" 
-
+version: '3'
 services:
-  github:
-    image: 'gitlab/gitlab-ce'
-    container_name: 'gitlab'
+  traefik:
+    image: traefik
+    container_name: traefik
+    networks:
+      - gitlab
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - './traefik.toml:/etc/traefik/traefik.toml'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    restart: unless-stopped
+    labels:
+      - "traefik.frontend.rule=Host:traefik.example.com"
+      - "traefik.port=8080"
+
+  gitlab:
+    image: 'gitlab/gitlab-ce:latest'
+    container_name: gitlab
+    networks:
+      - gitlab
     restart: always
-    hostname: gitlab.example.com
+    ports:
+      - '2222:22'
+    labels:
+      - "traefik.docker.network=gitlab"
+      - "traefik.enable=true"
+      - "traefik.gitlab.port=80"
+      - "traefik.gitlab.frontend.rule=Host:gitlab.example.com"
+      - "traefik.registry.port=80"
+      - "traefik.registry.frontend.rule=Host:registry.example.com"
+    healthcheck:
+      disable: true
     environment:
       GITLAB_OMNIBUS_CONFIG: |
-        external_url 'http://gitlab.example.com:9090'
-        gitlab_rails['gitlab_shell_ssh_port'] = 2224
-    networks:
-      - gitlab-network
-    ports:
-      - '80:80'
-      - '443:443'
-      - '9090:9090'
-      - '2224:22'
-    volumes:
-      - '/srv/gitlab/config:/etc/gitlab'
-      - '/srv/gitlab/logs:/var/log/gitlab'
-      - '/srv/gitlab/data:/var/opt/gitlab'
+        external_url = 'https://gitlab.example.com'
+        registry_external_url = 'https://registry.example.com'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+        gitlab_rails['registry_enabled'] = true
     environment:
-      - DEBUG=true
       - DB_ADAPTER=postgresql
       - DB_HOST=postgresql
       - DB_PORT=5432
       - DB_USER=gitlab
       - DB_PASS=password
       - DB_NAME=gitlabci
+    volumes:
+      - /srv/gitlab/config:/etc/gitlab
+      - /srv/gitlab/logs:/var/log/gitlab
+      - /srv/gitlab/data:/var/opt/gitlab
 
   github-runner:
     image: 'gitlab/gitlab-runner'
-    container_name: 'gitlab-runner'
+    container_name: gitlabrunner
     restart: always
     networks:
-      - gitlab-network
+      - gitlab
     volumes:
-      - '/var/run/docker.sock:/var/run/docker.sock'
-      - '/srv/gitlab/runner/config:/etc/gitlab-runner'
-      - '/srv/gitlab/data:/var/opt/gitlab'
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/gitlab/runner/config:/etc/gitlab-runner
+      - /srv/gitlab/data:/var/opt/gitlab
 
   postgresql:
     image: postgres:10
+    container_name: postgresql
     restart: always
     networks:
-      - gitlab-network
+      - gitlab
     volumes:
       - /srv/gitlab/postgresql:/var/lib/postgresql:Z
     environment:
@@ -55,4 +77,5 @@ services:
       - DB_EXTENSION=pg_trgm
 
 networks:
-  gitlab-network:
+  gitlab:
+

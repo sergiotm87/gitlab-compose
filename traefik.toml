@@ -1,0 +1,31 @@
+defaultEntryPoints = ["https","http"]
+
+[entryPoints]
+  [entryPoints.dashboard]
+  address = ":8080"
+  [entryPoints.http]
+  address = ":80"
+    [entryPoints.http.redirect]
+    entryPoint = "https"
+  [entryPoints.https]
+  address = ":443"
+  [entryPoints.https.tls]
+
+[api]
+entrypoint="dashboard"
+dashboard = true
+debug = true
+
+[docker]
+domain = "example.com"
+watch = true
+network = "gitlab"
+exposedbydefault = false
+
+[acme]
+email = "notifications@example.com"
+storage = "acme.json"
+entryPoint = "https"
+OnHostRule = true
+  [acme.httpChallenge]
+  entryPoint = "http"

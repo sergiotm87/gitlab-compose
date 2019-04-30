@@ -1,0 +1,30 @@
+#!/bin/bash
+
+function criptocerdos-gitlab-init() {
+
+  if [ ! -z "${BAIDS_DEBUG}" ]
+  then
+    set -x
+  else
+    set +x
+  fi
+
+  export PROJECT_NAME="gitlab"
+  export PROJECT_DIR="$( dirname $(readlink -f $(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ) ) )"
+  export DOCKER_COMPOSE_FILE="${PROJECT_DIR}/docker-compose.yml"
+
+}
+
+function criptocerdos-gitlab-start() {
+
+  criptocerdos-gitlab-init
+  docker-compose -f ${DOCKER_COMPOSE_FILE} up -d
+
+}
+
+function criptocerdos-gitlab-stop() {
+
+  criptocerdos-gitlab-init
+  docker-compose -f ${DOCKER_COMPOSE_FILE} down
+
+}
