@@ -1,7 +1,7 @@
 version: '3'
 services:
   traefik:
-    image: traefik
+    image: traefik:1.7
     container_name: traefik
     networks:
       - gitlab
@@ -10,6 +10,7 @@ services:
       - "443:443"
     volumes:
       - './traefik.toml:/etc/traefik/traefik.toml'
+      - '/srv/gitlab/ssl:/ssl'
       - '/var/run/docker.sock:/var/run/docker.sock'
     restart: unless-stopped
     labels:
@@ -30,23 +31,53 @@ services:
       - "traefik.enable=true"
       - "traefik.gitlab.port=80"
       - "traefik.gitlab.frontend.rule=Host:gitlab.example.com"
-      - "traefik.registry.port=80"
-      - "traefik.registry.frontend.rule=Host:registry.example.com"
+      - "traefik.registry.port=5100"
+      - "traefik.registry.frontend.rule=Host:registry.gitlab.example.com"
     healthcheck:
       disable: true
     environment:
       GITLAB_OMNIBUS_CONFIG: |
-        external_url = 'https://gitlab.example.com'
-        registry_external_url = 'https://registry.example.com'
+        external_url 'https://gitlab.example.com'
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        nginx['http2_enabled'] = false
+
+        nginx['proxy_set_headers'] = {
+          "Host" => "$$http_host",
+          "X-Real-IP" => "$$remote_addr",
+          "X-Forwarded-For" => "$$proxy_add_x_forwarded_for",
+          "X-Forwarded-Proto" => "https",
+          "X-Forwarded-Ssl" => "on"
+        }
+
         gitlab_rails['gitlab_shell_ssh_port'] = 2222
-        gitlab_rails['registry_enabled'] = true
-    environment:
-      - DB_ADAPTER=postgresql
-      - DB_HOST=postgresql
-      - DB_PORT=5432
-      - DB_USER=gitlab
-      - DB_PASS=password
-      - DB_NAME=gitlabci
+
+        registry['enable'] = true
+        registry_external_url 'https://registry.gitlab.example.com:5100'
+        registry_nginx['listen_port'] = 5100
+        registry_nginx['listen_https'] = false
+        registry_nginx['ssl_certificate'] = "/ssl/registry.crt"
+        registry_nginx['ssl_certificate_key'] = "/ssl/registry.key"
+        registry_nginx['ssl_dhparam'] = "/ssl/registry.pem"
+
+        registry_nginx['proxy_set_headers'] = {
+          "Host" => "$$http_host",
+          "X-Real-IP" => "$$remote_addr",
+          "X-Forwarded-For" => "$$proxy_add_x_forwarded_for",
+          "X-Forwarded-Proto" => "https",
+          "X-Forwarded-Ssl" => "on"
+        }
+
+        postgresql['enable'] = false
+        gitlab_rails['db_username'] = "gitlabci"
+        gitlab_rails['db_password'] = "password"
+        gitlab_rails['db_host'] = "postgresql"
+        gitlab_rails['db_port'] = "5432"
+        gitlab_rails['db_database'] = "gitlabci"
+        gitlab_rails['db_adapter'] = "postgresql"
+        gitlab_rails['db_encoding'] = "utf8"
+    volumes:
+      - '/srv/gitlab/ssl:/ssl'
     volumes:
       - /srv/gitlab/config:/etc/gitlab
       - /srv/gitlab/logs:/var/log/gitlab
@@ -72,10 +103,9 @@ services:
     volumes:
       - /srv/gitlab/postgresql:/var/lib/postgresql:Z
     environment:
-      - DB_USER=gitlab
-      - DB_PASS=password
-      - DB_NAME=gitlabci
-      - DB_EXTENSION=pg_trgm
+      - POSTGRES_USER=gitlabci
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB_EXTENSION=pg_trgm
 
 networks:
   gitlab:

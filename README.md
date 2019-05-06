@@ -1,4 +1,12 @@
 
+## Requirements
+
+create certificates for "*.example.com" in /srv/gitlab/ssl
+
+- https://github.com/FiloSottile/mkcert
+- openssl
+- let's encrypt
+
 ## HOW-TO
 
 wake up, gitlab!
@@ -6,19 +14,20 @@ wake up, gitlab!
 ```shell
 docker-compose up -d
 
-#proxy_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' traefik)
-#sudo echo "${proxy_ip} gitlab.example.com traefik.example.com registry.example.com" | sudo tee -a /etc/hosts;
-
-sudo echo "127.0.0.1 gitlab.example.com traefik.example.com registry.example.com" | sudo tee -a /etc/hosts;
+sudo echo "127.0.0.1 gitlab.example.com traefik.example.com registry.gitlab.example.com" | sudo tee -a /etc/hosts
 ```
 
-- Log into gitlab.example.com
+- Log into gitlab.example.com , go to user settings:
+    - Add ssh key to profile
+    - Create 'personal access token'
 
 
 ### Gitlab-runner
 https://docs.gitlab.com/runner/configuration/advanced-configuration.html
 
 - Get runner 'token api' in CI/CD settings
+
+- [WIP] Register the gitlab-runner: 
 
 ```shell
 export GITLAB_RUNNER_TOKEN=BGfzQ2NGWEBwrymJKsNK # example token
@@ -28,26 +37,14 @@ docker exec gitlabrunner gitlab-runner register -n \
 --registration-token ${GITLAB_RUNNER_TOKEN} \
 --clone-url http://gitlab:80 \
 --executor docker \
---docker-image "docker:latest" \
+--docker-image 'docker:latest' \
 --docker-privileged \
---docker-network-mode gitlab \
---docker-volumes ["/var/run/docker.sock:/var/run/docker.sock", "/cache"]
+--docker-network-mode gitlabcompose_gitlab \
+--cache_dir "cache" \
+--environment ["DOCKER_DRIVER=overlay2"]
 ```
 
-### Gitlab Registry
-
-* Check gitlab-registry login
-
-```shell
-DOCKER_USERNAME=username # gitlab credentials
-DOCKER_PASSWORD=password
-
-docker login -u=${DOCKER_USERNAME} -p=${DOCKER_PASSWORD} registry.example.com
-```
-
-### Snippets
-
-* gitlab runner example config
+* [WIP] Gitlab-runner example config:
 
 ```toml
 concurrent = 1
@@ -59,7 +56,7 @@ check_interval = 0
 [[runners]]
   name = "a45488195e3c"
   url = "http://gitlab:80"
-  token = "vjxcoQcQyawwZ4oJ9kkP"
+  token = "HLaYPCz1z9UkcYtGwWz9"
   executor = "docker"
   clone_url = "http://gitlab:80"
   environment = ["DOCKER_DRIVER=overlay2"]
@@ -81,7 +78,20 @@ check_interval = 0
     [runners.cache.gcs]
 ```
 
-### Traefik example config
+### Gitlab Registry
+
+* Check gitlab-registry login
+
+```shell
+DOCKER_USERNAME=username # gitlab credentials
+DOCKER_PASSWORD=password
+
+docker login -u=${DOCKER_USERNAME} -p=${DOCKER_PASSWORD} registry.gitlab.example.com
+```
+
+### Snippets
+
+- Traefik example config
 
 ```toml
 defaultEntryPoints = ["https","http"]
@@ -89,9 +99,6 @@ defaultEntryPoints = ["https","http"]
 [entryPoints]
   [entryPoints.dashboard]
   address = ":8080"
-#    [entryPoints.dashboard.auth]
-#      [entryPoints.dashboard.auth.basic]
-#        users = ["username:password"]
   [entryPoints.http]
   address = ":80"
     [entryPoints.http.redirect]
@@ -99,6 +106,11 @@ defaultEntryPoints = ["https","http"]
   [entryPoints.https]
   address = ":443"
   [entryPoints.https.tls]
+    [[entryPoints.https.tls.certificates]]
+    certFile = "/ssl/example.com.pem"
+    keyFile = "/ssl/example.com.key"
+  [entrypoints.gitlab-ssh]
+    address = ":2222"
 
 [api]
 entrypoint="dashboard"
@@ -111,18 +123,46 @@ watch = true
 network = "gitlab"
 exposedbydefault = false
 
-[acme]
-email = "notifications@example.com"
-storage = "acme.json"
-entryPoint = "https"
-OnHostRule = true
-  [acme.httpChallenge]
-  entryPoint = "http"
 ```
 
-### Related docs
+- Gitlab-ci.yml example
 
-https://docs.gitlab.com/omnibus/docker/#install-gitlab-using-docker-compose
-https://docs.gitlab.com/ce/administration/container_registry.html#configure-container-registry-under-an-existing-gitlab-domain
+```yml
+stages:
+  - build
+  - test
 
-https://docs.traefik.io/user-guide/docker-and-lets-encrypt/
+build:
+  image: docker:stable
+  services:
+    - name:  docker:dind
+  stage: build
+  script:
+    #- export # show environment variables
+    - apk add --no-cache git
+    - if [ -f "./faas-cli" ] ; then cp ./faas-cli /usr/local/bin/faas-cli || 0 ; fi
+    - if [ ! -f "/usr/local/bin/faas-cli" ] ; then apk add --no-cache curl git && curl -sSL cli.openfaas.com | sh && chmod +x /usr/local/bin/faas-cli && cp /usr/local/bin/faas-cli ./faas-cli ; fi
+    # Build Docker image
+    - /usr/local/bin/faas-cli build -f criptowatch-ohlc.yml --build-arg ADDITIONAL_PACKAGE='make automake gcc musl-dev g++ python3-dev'
+    - docker tag kammin/criptowatch-ohlc:latest registry.gitlab.example.com/functions/criptowatch-ohlc:latest 
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD registry.gitlab.example.com
+    - docker push registry.gitlab.example.com/functions/criptowatch-ohlc:latest
+#  after_script:
+#    - 
+  only:
+    - master
+
+test:
+  image: docker:stable
+  services:
+    - docker:dind
+  stage: test
+  dependencies:
+    - build
+  script:
+    - ""
+  after_script:
+    - ""
+  only:
+    - master
+```

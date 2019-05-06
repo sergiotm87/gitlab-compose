@@ -10,6 +10,9 @@ defaultEntryPoints = ["https","http"]
   [entryPoints.https]
   address = ":443"
   [entryPoints.https.tls]
+    [[entryPoints.https.tls.certificates]]
+    certFile = "/ssl/example.com.pem"
+    keyFile = "/ssl/example.com.key"
 
 [api]
 entrypoint="dashboard"
@@ -21,11 +24,3 @@ domain = "example.com"
 watch = true
 network = "gitlab"
 exposedbydefault = false
-
-[acme]
-email = "notifications@example.com"
-storage = "acme.json"
-entryPoint = "https"
-OnHostRule = true
-  [acme.httpChallenge]
-  entryPoint = "http"
