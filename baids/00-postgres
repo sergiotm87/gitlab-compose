@@ -1,0 +1,10 @@
+#!/bin/bash
+
+function criptocerdos-gitlab-postgresql-dump-db() {
+
+  criptocerdos-gitlab-init
+
+  docker exec -it --user postgres postgresql /bin/bash -c 'export PGPASSWORD=${POSTGRES_PASSWORD}; \
+    pg_dump -U ${POSTGRES_USER} -h localhost ${POSTGRES_DATABASE} > /var/lib/postgresql/data/dump_$(date --iso-8601=hours).sql'
+
+}
