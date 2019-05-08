@@ -109,8 +109,6 @@ defaultEntryPoints = ["https","http"]
     [[entryPoints.https.tls.certificates]]
     certFile = "/ssl/example.com.pem"
     keyFile = "/ssl/example.com.key"
-  [entrypoints.gitlab-ssh]
-    address = ":2222"
 
 [api]
 entrypoint="dashboard"

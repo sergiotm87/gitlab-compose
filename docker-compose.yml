@@ -8,14 +8,17 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8080:8080"
     volumes:
       - './traefik.toml:/etc/traefik/traefik.toml'
       - '/srv/gitlab/ssl:/ssl'
       - '/var/run/docker.sock:/var/run/docker.sock'
     restart: unless-stopped
     labels:
-      - "traefik.frontend.rule=Host:traefik.example.com"
+      - "traefik.docker.network=gitlab"
+      - "traefik.enable=true"
       - "traefik.port=8080"
+      - "traefik.frontend.rule=Host:traefik.example.com"
 
   gitlab:
     image: 'gitlab/gitlab-ce:latest'
@@ -101,7 +104,7 @@ services:
     networks:
       - gitlab
     volumes:
-      - /srv/gitlab/postgresql:/var/lib/postgresql:Z
+      - /srv/gitlab/postgresql/data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=gitlabci
       - POSTGRES_PASSWORD=password

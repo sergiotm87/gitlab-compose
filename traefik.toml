@@ -2,22 +2,23 @@ defaultEntryPoints = ["https","http"]
 
 [entryPoints]
   [entryPoints.dashboard]
-  address = ":8080"
+    address = ":8080"
+#    [entryPoints.dashboard.auth.basic]
+#      users = ["user:password"]
   [entryPoints.http]
-  address = ":80"
+    address = ":80"
     [entryPoints.http.redirect]
-    entryPoint = "https"
+      entryPoint = "https"
   [entryPoints.https]
-  address = ":443"
+    address = ":443"
   [entryPoints.https.tls]
     [[entryPoints.https.tls.certificates]]
-    certFile = "/ssl/example.com.pem"
-    keyFile = "/ssl/example.com.key"
+      certFile = "/ssl/example.com.pem"
+      keyFile = "/ssl/example.com.key"
 
 [api]
 entrypoint="dashboard"
-dashboard = true
-debug = true
+#debug = true
 
 [docker]
 domain = "example.com"
