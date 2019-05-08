@@ -14,7 +14,7 @@ Wake up, gitlab!
 ```shell
 docker-compose up -d
 
-sudo echo "127.0.0.1 gitlab.example.com traefik.example.com registry.gitlab.example.com" | sudo tee -a /etc/hosts
+echo "127.0.0.1 gitlab.example.com traefik.example.com registry.gitlab.example.com" | sudo tee -a /etc/hosts
 ```
 
 - Log into gitlab.example.com , go to user settings:
