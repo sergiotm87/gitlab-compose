@@ -72,11 +72,11 @@ services:
         }
 
         postgresql['enable'] = false
-        gitlab_rails['db_username'] = "gitlabci"
-        gitlab_rails['db_password'] = "password"
+        gitlab_rails['db_username'] = "${POSTGRES_USER:-gitlabci}"
+        gitlab_rails['db_password'] = "${POSTGRES_PASSWORD:-password}"
         gitlab_rails['db_host'] = "postgresql"
         gitlab_rails['db_port'] = "5432"
-        gitlab_rails['db_database'] = "gitlabci"
+        gitlab_rails['db_database'] = ""${POSTGRES_DATABASE:-gitlabci}""
         gitlab_rails['db_adapter'] = "postgresql"
         gitlab_rails['db_encoding'] = "utf8"
     volumes:
@@ -106,8 +106,8 @@ services:
     volumes:
       - /srv/gitlab/postgresql/data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=gitlabci
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=${POSTGRES_USER:-gitlabci}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - POSTGRES_DB_EXTENSION=pg_trgm
 
 networks:
