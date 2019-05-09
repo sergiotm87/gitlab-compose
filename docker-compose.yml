@@ -76,7 +76,7 @@ services:
         gitlab_rails['db_password'] = "${POSTGRES_PASSWORD:-password}"
         gitlab_rails['db_host'] = "postgresql"
         gitlab_rails['db_port'] = "5432"
-        gitlab_rails['db_database'] = ""${POSTGRES_DATABASE:-gitlabci}""
+        gitlab_rails['db_database'] = "${POSTGRES_DATABASE:-gitlabci}"
         gitlab_rails['db_adapter'] = "postgresql"
         gitlab_rails['db_encoding'] = "utf8"
     volumes:
